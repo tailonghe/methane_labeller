@@ -1,6 +1,6 @@
 # Methane plume labeller
 A GUI for labelling methane plumes from O&G super emitters, using images from Landsat satellites (Landsat 4, 5, 7, and 8) and Sentinel-2.
-![](figs/animate.gif)
+![](figs/animation.gif)
 
 ## Steps to set up the environment
 * Install the gcloud CLI following instructions here: https://cloud.google.com/sdk/docs/install#linux
