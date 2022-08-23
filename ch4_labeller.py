@@ -14,12 +14,8 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import cartopy.crs as ccrs
 import cartopy.feature as cfeature
-import iris
 from scipy.stats import zscore
 from tkinter import messagebox
-from shapely.geometry import Point
-from shapely.geometry.polygon import Polygon
-from shapely import geometry
 from matplotlib.widgets import LassoSelector
 from matplotlib import path
 import os
