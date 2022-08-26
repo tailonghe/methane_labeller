@@ -130,16 +130,27 @@ def last_day_of_month(any_day):
     # subtracting the number of the current day brings us back one month
     return next_month - timedelta(days=next_month.day)
 
-def get_plume(tkframe, lon, lat, startDate, endDate, dX=0.01, dY=0.01, do_retrieval=False, satellite='L8'):
+def get_plume(tkframe, lon, lat, startDate, endDate, dX=1.5, dY=1.5, do_retrieval=False, satellite='L8'):
+    '''
+    dX/dY: distance (km) in NS/WE direction
+    lon: longitude (~180 -- 180)
+    lat: latitude
+    startDate/endDate: string ('YYYY-MM-DD') for initial/final date
+    do_retrieval: flag for calculating XCH4 using the MBSP approach
+    satellite: Satellite name (L4, L5, L7, L8, and S2) 
+    '''
     # Initialize Earth Engine
     ee.Initialize()
 
     # Coordinate mapping for rectangle of plume
     grid_pt = (lat, lon)
-    W=grid_pt[1]-dX 
-    E=grid_pt[1]+dX 
-    N=grid_pt[0]+dY 
-    S=grid_pt[0]-dY 
+    dlat = dY/110.574
+    dlon = dX/111.320*np.cos(lat)
+
+    W=grid_pt[1]-dlon 
+    E=grid_pt[1]+dlon
+    N=grid_pt[0]+dlat
+    S=grid_pt[0]-dlat
     re   = ee.Geometry.Point(lon, lat)
     region = ee.Geometry.Polygon(
         [[W, N],\
