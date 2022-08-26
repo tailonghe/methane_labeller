@@ -217,7 +217,7 @@ class Application(tk.Tk):
             end_time = start_time + timedelta(days=40)
             end_time = datetime(end_time.year, end_time.month, 1, 0, 0)
             self.post_print('> Searching for: ' + start_time.strftime('%Y-%m-%d --> ') + end_time.strftime('%Y-%m-%d'))
-            img_id_list, date_list, img_date_list, imgchannels, imgxch4, imglons, imglats = get_plume(self, self.lonnow, self.latnow, start_time.strftime('%Y-%m-%d'), end_time.strftime('%Y-%m-%d'), dX=1, dY=1, do_retrieval=False, satellite=current_sate)  # 5.905613686710645, 31.65857047520231  # 31.6585, 5.9053  # self.satenow.get()
+            img_id_list, date_list, img_date_list, imgchannels, imgxch4, imglons, imglats = get_plume(self, self.lonnow, self.latnow, start_time.strftime('%Y-%m-%d'), end_time.strftime('%Y-%m-%d'), dX=1.5, dY=1.5, do_retrieval=False, satellite=current_sate)  # 5.905613686710645, 31.65857047520231  # 31.6585, 5.9053  # self.satenow.get()
             img_idx = 0
             # start_time = datetime(2020, 3, 1, 0, 0)
             # end_time = datetime(2020, 4, 1, 0, 0)
