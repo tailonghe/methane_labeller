@@ -162,10 +162,10 @@ def get_plume(tkframe, lon, lat, startDate, endDate, dX=1.5, dY=1.5, do_retrieva
         [E, N]])
 
     era5_region = ee.Geometry.Polygon(
-            [[lon-0.01, lat+0.01],\
-              [lon-0.01, lat-0.01],\
-              [lon+0.01, lat-0.01],\
-              [lon+0.01, lat+0.01]])
+            [[lon-0.02, lat+0.02],\
+              [lon-0.02, lat-0.02],\
+              [lon+0.02, lat-0.02],\
+              [lon+0.02, lat+0.02]])
 
     redband = satellite_database[satellite]['Red']
     greenband = satellite_database[satellite]['Green']

@@ -5,6 +5,7 @@
 from tkinter import END
 import tkinter as tk
 from backend.ee_retrieval import satellite_database, get_plume
+from backend.utils import zstandard
 from datetime import datetime, timedelta
 import numpy as np
 import matplotlib.pyplot as plt
@@ -96,7 +97,7 @@ class Application(tk.Tk):
     """
     def __init__(self, *args, **kwargs):
         tk.Tk.__init__(self, *args, **kwargs)
-        self.title('Methane Labeller ver. 0')
+        self.title('Methane Labeller ver. 1.0')
         self.geometry('1520x800')
         self.satenow = tk.StringVar(self)
         self.latnow = tk.DoubleVar(self)
@@ -277,7 +278,7 @@ def animate(i):
         coolwarm = cm.get_cmap('coolwarm', 600)
         newcolors = coolwarm(np.linspace(0, 1, 600))
 
-        im = ax1.pcolormesh(xx, yy, zscore(ndvi), cmap=newcmp2, vmin=-3, vmax=3)
+        im = ax1.pcolormesh(xx, yy, zstandard(ndvi), cmap=newcmp2, vmin=-3, vmax=3)
         ax1.set_xlim((0, np.max(xx)))
         ax1.set_ylim((0, np.max(yy)))
         ax1.set_xticks( [0, np.max(xx)])
@@ -292,7 +293,7 @@ def animate(i):
         ax1.set_title('NDVI', y=1)
         
 
-        im = ax2.pcolormesh(xx, yy, zscore(ndmi), cmap=newcmp2, vmin=-3, vmax=3)
+        im = ax2.pcolormesh(xx, yy, zstandard(ndmi), cmap=newcmp2, vmin=-3, vmax=3)
         ax2.set_xlim((0, np.max(xx)))
         ax2.set_ylim((0, np.max(yy)))
         ax2.set_xticks( [0, np.max(xx)])
@@ -340,7 +341,7 @@ def animate(i):
         
         masktemp = imgmask[img_idx].copy()
         masktemp[masktemp > 0] = np.nan
-        im = ax7.pcolormesh(xx, yy, zscore(imgchannels[img_idx, :, :, 0])+masktemp, cmap=newcmp1, vmin=-3, vmax=3)
+        im = ax7.pcolormesh(xx, yy, zstandard(imgchannels[img_idx, :, :, 0])+masktemp, cmap=newcmp1, vmin=-3, vmax=3)
         
         ax7.set_xlim((0, np.max(xx)))
         ax7.set_ylim((0, np.max(yy)))
@@ -409,9 +410,9 @@ def onselect(verts):
     pix = np.vstack( (xv.flatten(), yv.flatten()) ).T
 
     p = path.Path(verts)
-    ind = p.contains_points(pix, radius=1)
+    ind = p.contains_points(pix, radius=0.2)
     imgmask[img_idx] = updateArray(imgmask[img_idx], ind, direction=1)
-    reset = True
+    
 
 
 def onselect_delete(verts):
@@ -421,13 +422,17 @@ def onselect_delete(verts):
     pix = np.vstack( (xv.flatten(), yv.flatten()) ).T
 
     p = path.Path(verts)
-    ind = p.contains_points(pix, radius=1)
+    ind = p.contains_points(pix, radius=0.5)
     imgmask[img_idx] = updateArray(imgmask[img_idx], ind, direction=-1)
     # mask_img.set_data(imgmask[img_idx])
     # fig.canvas.draw_idle()
+    
+
+def onrelease(event):
+    global reset
+    print('Released')
     reset = True
-
-
+    
 #------------------------------------------------
 
 def get_filename():
@@ -455,6 +460,7 @@ def save_output():
     app.post_print('> Finished saving ( %d / %d ).'%(img_idx+1, len(img_date_list)))
     print('> Finished saving ( %d / %d ).'%(img_idx+1, len(img_date_list)))
 
+fig.canvas.mpl_connect('button_release_event', onrelease)
     
         
 # Initialize the GUI
@@ -464,8 +470,8 @@ app = Application()
 
 ani = animation.FuncAnimation(fig, animate, interval=1000)
 
-lasso_add = LassoSelector(ax7, onselect, lineprops={'color': 'blue', 'linewidth': 2}, button=1)
-lasso_delete = LassoSelector(ax7, onselect_delete, lineprops={'color': 'white', 'linewidth': 2}, button=3)
+lasso_add = LassoSelector(ax7, onselect, lineprops={'color': 'blue', 'linewidth': 0.5}, button=1)
+lasso_delete = LassoSelector(ax7, onselect_delete, lineprops={'color': 'white', 'linewidth': 0.5}, button=3)
 
 app.protocol("WM_DELETE_WINDOW", on_closing)
 

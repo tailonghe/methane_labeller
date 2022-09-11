@@ -90,15 +90,18 @@ def get_s2_cld_col(aoi, start_date, end_date):
         .filterDate(start_date, end_date)
         )
     mgsr_list = s2_sr_col_all.aggregate_array('MGRS_TILE').getInfo()
+    print('mgsr_list: ', mgsr_list)
+    if len(mgsr_list) == 0:
+        return None
     s2_sr_col = s2_sr_col_all.filterMetadata('MGRS_TILE', 'equals', mgsr_list[0])
     s2_sr_img_size = s2_sr_col.size().getInfo()
     print(mgsr_list[0] + ' size: ', s2_sr_img_size)
-    if len(mgsr_list) > 1:
-        for tile in mgsr_list[1:]:
+
+    for tile in mgsr_list[1:]:
         s2_sr_col_tmp = s2_sr_col_all.filterMetadata('MGRS_TILE', 'equals', tile)
         current_size = s2_sr_col_tmp.size().getInfo()
         print(tile + ' size: ', current_size)
-            if current_size > s2_sr_img_size:
+        if current_size > s2_sr_img_size:
             s2_sr_img_size = current_size
             s2_sr_col = s2_sr_col_all.filterMetadata('MGRS_TILE', 'equals', tile)
     
@@ -130,22 +133,39 @@ def last_day_of_month(any_day):
     # subtracting the number of the current day brings us back one month
     return next_month - timedelta(days=next_month.day)
 
-def get_plume(tkframe, lon, lat, startDate, endDate, dX=0.01, dY=0.01, do_retrieval=False, satellite='L8'):
+def get_plume(tkframe, lon, lat, startDate, endDate, dX=1.5, dY=1.5, do_retrieval=False, satellite='L8'):
+    '''
+    dX/dY: distance (km) in NS/WE direction
+    lon: longitude (~180 -- 180)
+    lat: latitude
+    startDate/endDate: string ('YYYY-MM-DD') for initial/final date
+    do_retrieval: flag for calculating XCH4 using the MBSP approach
+    satellite: Satellite name (L4, L5, L7, L8, and S2) 
+    '''
     # Initialize Earth Engine
     ee.Initialize()
 
     # Coordinate mapping for rectangle of plume
     grid_pt = (lat, lon)
-    W=grid_pt[1]-dX 
-    E=grid_pt[1]+dX 
-    N=grid_pt[0]+dY 
-    S=grid_pt[0]-dY 
+    dlat = dY/110.574
+    dlon = dX/111.320/np.cos(lat*0.0174532925)
+    print('dlat, dlon: ', dlat, dlon)
+    W=grid_pt[1]-dlon 
+    E=grid_pt[1]+dlon
+    N=grid_pt[0]+dlat
+    S=grid_pt[0]-dlat
     re   = ee.Geometry.Point(lon, lat)
     region = ee.Geometry.Polygon(
         [[W, N],\
         [W, S],\
         [E, S],\
         [E, N]])
+
+    era5_region = ee.Geometry.Polygon(
+            [[lon-0.02, lat+0.02],\
+              [lon-0.02, lat-0.02],\
+              [lon+0.02, lat-0.02],\
+              [lon+0.02, lat+0.02]])
 
     redband = satellite_database[satellite]['Red']
     greenband = satellite_database[satellite]['Green']
@@ -163,13 +183,14 @@ def get_plume(tkframe, lon, lat, startDate, endDate, dX=0.01, dY=0.01, do_retrie
         _default_value = None
         scaleFac = 0.0001
         img_collection = get_s2_cld_col(region, startDate, endDate)
-        img_collection = img_collection.map(add_cloud_bands).select([redband,
-                                        greenband,
-                                        blueband,
-                                        nirband,
-                                        swir1band,
-                                        swir2band,
-                                        'cloud_prob'])
+        if img_collection is not None:
+            img_collection = img_collection.map(add_cloud_bands).select([redband,
+                                            greenband,
+                                            blueband,
+                                            nirband,
+                                            swir1band,
+                                            swir2band,
+                                            'cloud_prob'])
     else:
         _default_value = -999
         scaleFac = 1
@@ -180,11 +201,6 @@ def get_plume(tkframe, lon, lat, startDate, endDate, dX=0.01, dY=0.01, do_retrie
                                                                         swir1band,
                                                                         swir2band,
                                                                         cloudband])
-    tkframe.post_print('> Number of images found: '+ str(img_collection.size().getInfo()))
-    tkframe.post_print('> ==> Zero img check: ' + str(img_collection.size().getInfo() == 0))
-
-    # convert to list of images
-    collectionList = img_collection.toList(img_collection.size())
 
     # initialize arrays
     chanlarr = None
@@ -192,6 +208,20 @@ def get_plume(tkframe, lon, lat, startDate, endDate, dX=0.01, dY=0.01, do_retrie
     lonarr = None
     latarr = None
     date_list2 = []
+    u10m, v10m = [], []
+
+    if img_collection is None:
+        tkframe.post_print('>  ==>  !!!!! NO SATELLITE IMAGE FOUND !!!!!') 
+        id_list, date_list = [], []
+        pass
+
+    tkframe.post_print('> Number of images found: '+ str(img_collection.size().getInfo()))
+    tkframe.post_print('> ==> Zero img check: ' + str(img_collection.size().getInfo() == 0))
+
+    # convert to list of images
+    collectionList = img_collection.toList(img_collection.size())
+
+
 
     if img_collection.size().getInfo() == 0:
         tkframe.post_print('>  ==>  !!!!! NO SATELLITE IMAGE FOUND !!!!!') 
@@ -229,6 +259,23 @@ def get_plume(tkframe, lon, lat, startDate, endDate, dX=0.01, dY=0.01, do_retrie
             currentimg = ee.Image(collectionList.get(i))
             imgdate = datetime(1970, 1, 1, 0, 0) + timedelta(seconds=currentimg.date().getInfo()['value']/1000)
             tkframe.post_print('>  ==> Img date: ' + imgdate.strftime('%Y-%m-%d %H:%M%S'))
+
+            try:
+                wind_collection = ee.ImageCollection("ECMWF/ERA5/DAILY").filterDate(imgdate.strftime('%Y-%m-%d')).filterBounds(era5_region).select(['u_component_of_wind_10m','v_component_of_wind_10m'])
+                wind = wind_collection.first()
+                u = geemap.ee_to_numpy(wind.select('u_component_of_wind_10m'), region = era5_region)/1.944 # convert m/s to knots
+                v = geemap.ee_to_numpy(wind.select('v_component_of_wind_10m'), region = era5_region)/1.944 # convert m/s to knots
+                u = np.nanmean(u)
+                v = np.nanmean(v)
+            except:
+                tkframe.post_print('>  ==> ERA5 U/V winds NA')
+                u10m.append(None)
+                v10m.append(None)
+                pass
+            else:
+                u10m.append(u)
+                v10m.append(v)
+
 
 
             lons = currentimg.pixelLonLat().select('longitude').reproject(crs=ee.Projection('EPSG:3395'), scale=30)
@@ -314,7 +361,7 @@ def get_plume(tkframe, lon, lat, startDate, endDate, dX=0.01, dY=0.01, do_retrie
             chanls = np.stack([dR, rchannel, gchannel, bchannel, nirchannel, swir1channel, swir2channel, cloudscore], axis=-1)
             date_list2.append(imgdate)
 
-            if chanlarr is None:
+            if chanlarr is None:     # Initialize arrays
                 # dRarr = dR[np.newaxis, :, :]
                 chanlarr = chanls[np.newaxis, :, :, :]
                 lonarr = lons[np.newaxis, :, :]
@@ -333,8 +380,8 @@ def get_plume(tkframe, lon, lat, startDate, endDate, dX=0.01, dY=0.01, do_retrie
                 else:
                     zarr = np.append(zarr, None)
         except Exception as e:
-            tkframe.post_print(">  ==> !!!Something wrong!!!: " + str(e))
+            tkframe.post_print(">  ==> !!!Something went wrong!!!: " + str(e))
             pass
-    return id_list, date_list, date_list2, chanlarr, zarr, lonarr, latarr
+    return id_list, date_list, date_list2, chanlarr, zarr, lonarr, latarr, u10m, v10m
 
 
