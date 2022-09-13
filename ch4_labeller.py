@@ -267,8 +267,8 @@ def animate(i):
         ndvi = (imgchannels[img_idx, :, :, 4] - imgchannels[img_idx, :, :, 1])/(imgchannels[img_idx, :, :, 4] + imgchannels[img_idx, :, :, 1])
         ndmi = (imgchannels[img_idx, :, :, 5] - imgchannels[img_idx, :, :, 6])/(imgchannels[img_idx, :, :, 5] + imgchannels[img_idx, :, :, 6])
         datestr = img_date_list[img_idx].strftime('%Y-%m-%d %H:%M:%S')
-        xx = np.arange(0, imgchannels[img_idx, :, :, 0].shape[1], 1)
-        yy = np.arange(0, imgchannels[img_idx, :, :, 0].shape[0], 1)
+        xx = np.arange(-0.5, imgchannels[img_idx, :, :, 0].shape[1]+0.5, 1)
+        yy = np.arange(-0.5, imgchannels[img_idx, :, :, 0].shape[0]+0.5, 1)
 
         fig.suptitle('%s: [Lon=%.2f, Lat=%.2f], %s ( %d / %d )'%(current_sate, center_lon, center_lat, datestr, img_idx+1, imgchannels.shape[0]), y=0.98, fontsize=10)
         print(imgchannels.shape, rgb.shape, ndmi.shape)
@@ -279,12 +279,13 @@ def animate(i):
         newcolors = coolwarm(np.linspace(0, 1, 600))
 
         im = ax1.pcolormesh(xx, yy, zstandard(ndvi), cmap=newcmp2, vmin=-3, vmax=3)
-        ax1.set_xlim((0, np.max(xx)))
-        ax1.set_ylim((0, np.max(yy)))
-        ax1.set_xticks( [0, np.max(xx)])
-        ax1.set_yticks( [0, np.max(yy)])
+        ax1.set_xlim((-0.5, np.max(xx)))
+        ax1.set_ylim((-0.5, np.max(yy)))
+        ax1.set_xticks( [0, np.max(xx)-0.5])
+        ax1.set_yticks( [0, np.max(yy)-0.5])
         ax1.invert_yaxis()
         ax1.xaxis.tick_top()
+        ax1.set_yticklabels(ax1.get_yticks().astype(int), rotation = 90)
         posn = ax1.get_position()
         # ax1.set_extent([imglons[img_idx, 0, 0], imglons[img_idx, -1, -1], imglats[img_idx, 0, 0], imglats[img_idx, -1, -1]], crs=ccrs.PlateCarree())
         cbar_ax1.set_position([posn.x0, posn.y0 - 0.025,
@@ -294,12 +295,13 @@ def animate(i):
         
 
         im = ax2.pcolormesh(xx, yy, zstandard(ndmi), cmap=newcmp2, vmin=-3, vmax=3)
-        ax2.set_xlim((0, np.max(xx)))
-        ax2.set_ylim((0, np.max(yy)))
-        ax2.set_xticks( [0, np.max(xx)])
-        ax2.set_yticks( [0, np.max(yy)])
+        ax2.set_xlim((-0.5, np.max(xx)))
+        ax2.set_ylim((-0.5, np.max(yy)))
+        ax2.set_xticks( [0, np.max(xx)-0.5])
+        ax2.set_yticks( [0, np.max(yy)-0.5])
         ax2.invert_yaxis()
         ax2.xaxis.tick_top()
+        ax2.set_yticklabels(ax2.get_yticks().astype(int), rotation = 90)
         posn = ax2.get_position()
         cbar_ax2.set_position([posn.x0, posn.y0 - 0.025,
                           posn.width, 0.01])
@@ -310,20 +312,19 @@ def animate(i):
         im = ax3.imshow(rgb, transform=ccrs.PlateCarree(), extent=[imglons[img_idx, 0, 0], imglats[img_idx, 0, 0], imglons[img_idx, -1, -1], imglats[img_idx, -1, -1]])
         ax3.set_title('RGB True Color')
         
-        
         im = ax4.pcolormesh(xx, yy, imgchannels[img_idx, :, :, 7], cmap=cm.binary_r, vmin=0, vmax=80)
-        ax4.set_xlim((0, np.max(xx)))
-        ax4.set_ylim((0, np.max(yy)))
-        ax4.set_xticks( [0, np.max(xx)])
-        ax4.set_yticks( [0, np.max(yy)])
+        ax4.set_xlim((-0.5, np.max(xx)))
+        ax4.set_ylim((-0.5, np.max(yy)))
+        ax4.set_xticks( [0, np.max(xx)-0.5])
+        ax4.set_yticks( [0, np.max(yy)-0.5])
         ax4.invert_yaxis()
         ax4.xaxis.tick_top()
+        ax4.set_yticklabels(ax4.get_yticks().astype(int), rotation = 90)
         posn = ax4.get_position()
         cbar_ax4.set_position([posn.x0, posn.y0 - 0.02,
                           posn.width, 0.01])
         plt.colorbar(im, cax=cbar_ax4, orientation='horizontal', extend='max')
         ax4.set_title('Cloud Score', y=1)
-        
         
         # im = ax3.pcolormesh(imglons[img_idx], imglats[img_idx], zscore(imgchannels[img_idx, :, :, 0]), cmap=cm.viridis, transform=ccrs.PlateCarree(), vmin=-2, vmax=2)
         # posn = ax3.get_position()
@@ -331,7 +332,6 @@ def animate(i):
         #                   0.02, posn.height])
         # plt.colorbar(im, cax=cbar_ax3, orientation='vertical')
         # ax3.set_title('dR Z-score')
-        
         # mask_img = ax4.pcolormesh(imglons[img_idx], imglats[img_idx], imgmask[img_idx], cmap=cm.binary, vmin=0, vmax=1, transform=ccrs.PlateCarree())
         # posn = ax4.get_position()
         # cbar_ax4.set_position([posn.x0 + posn.width + 0.01, posn.y0,
@@ -342,12 +342,12 @@ def animate(i):
         masktemp = imgmask[img_idx].copy()
         masktemp[masktemp > 0] = np.nan
         im = ax7.pcolormesh(xx, yy, zstandard(imgchannels[img_idx, :, :, 0])+masktemp, cmap=newcmp1, vmin=-3, vmax=3)
-        
-        ax7.set_xlim((0, np.max(xx)))
-        ax7.set_ylim((0, np.max(yy)))
-        ax7.set_xticks([0, np.max(xx)])
-        ax7.set_yticks([0, np.max(yy)])
+        ax7.set_xlim((-0.5, np.max(xx)))
+        ax7.set_ylim((-0.5, np.max(yy)))
+        ax7.set_xticks([0, np.max(xx)-0.5])
+        ax7.set_yticks([0, np.max(yy)-0.5])
         ax7.invert_yaxis()
+        ax7.set_yticklabels(ax7.get_yticks().astype(int), rotation=90)
         posn = ax7.get_position()
         cbar_ax7.set_position([posn.x0 + posn.width + 0.01, posn.y0,
                           0.02, posn.height])
@@ -410,7 +410,7 @@ def onselect(verts):
     pix = np.vstack( (xv.flatten(), yv.flatten()) ).T
 
     p = path.Path(verts)
-    ind = p.contains_points(pix, radius=0.2)
+    ind = p.contains_points(pix, radius=0.3)
     imgmask[img_idx] = updateArray(imgmask[img_idx], ind, direction=1)
     
 
@@ -422,7 +422,7 @@ def onselect_delete(verts):
     pix = np.vstack( (xv.flatten(), yv.flatten()) ).T
 
     p = path.Path(verts)
-    ind = p.contains_points(pix, radius=0.5)
+    ind = p.contains_points(pix, radius=0.6)
     imgmask[img_idx] = updateArray(imgmask[img_idx], ind, direction=-1)
     # mask_img.set_data(imgmask[img_idx])
     # fig.canvas.draw_idle()
@@ -440,7 +440,7 @@ def get_filename():
 
 def save_output():
     global app, fig, img_idx
-    global img_id_list, img_date_list, imgchannels, imglons, imglats, imgmask
+    global img_id_list, img_date_list, imgchannels, imglons, imglats, imgmask, u10m, v10m
 
     outdir = 'labelled_plumes/'
     subdir = "%.3f_%.3f/"%(center_lon, center_lat)
@@ -455,7 +455,9 @@ def save_output():
                                img_date_list=img_date_list[img_idx],
                                longrid=imglons[img_idx], 
                                latgrid=imglats[img_idx], 
-                               mask=imgmask[img_idx])
+                               mask=imgmask[img_idx],
+                               u10m=u10m[img_idx],
+                               v10m=v10m[img_idx])
     fig.savefig(outname + '.png', dpi=300)
     app.post_print('> Finished saving ( %d / %d ).'%(img_idx+1, len(img_date_list)))
     print('> Finished saving ( %d / %d ).'%(img_idx+1, len(img_date_list)))
