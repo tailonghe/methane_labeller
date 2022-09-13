@@ -12,7 +12,7 @@ for fname in flist:
 	folder = '/'.join(fname.split('/')[:-1])
 	parent = folder.split('/')[-2]
 	imgfolder = folder.split('/')[-1]
-	print('Percent of cloud score > 60: ', cloudness)
+	print('Percent of cloud score > 50: ', cloudness)
 
 	if np.any(mask != 0):
 		if not os.path.exists('classified/positive/'+parent):
@@ -20,7 +20,7 @@ for fname in flist:
 		if not os.path.exists('classified/positive/'+parent+'/'+imgfolder):
 			shutil.copytree(folder, 'classified/positive/'+parent+'/'+imgfolder)
 	else:
-		if cloudness >= 50:
+		if cloudness >= 30:
 			if not os.path.exists('classified/cloudy/'+parent):
 				os.makedirs('classified/cloudy/'+parent)
 			if not os.path.exists('classified/cloudy/'+parent+'/'+imgfolder):
