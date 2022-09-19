@@ -60,7 +60,7 @@ mask_img = None
 fig = Figure(figsize=(6.4, 4), dpi=200)
 ax1 = fig.add_subplot(2, 4,  1)
 ax2 = fig.add_subplot(2, 4,  2)
-ax3 = fig.add_subplot(2, 4,  5, projection=ccrs.PlateCarree())
+ax3 = fig.add_subplot(2, 4,  5)
 ax4 = fig.add_subplot(2, 4,  6)
 # ax5 = fig.add_subplot(3, 4,  9, projection=ccrs.PlateCarree())
 # ax6 = fig.add_subplot(3, 4, 10, projection=ccrs.PlateCarree())
@@ -104,6 +104,7 @@ class Application(tk.Tk):
         self.lonnow = tk.DoubleVar(self)
         self.yynow = tk.IntVar(self)
         self.mmnow = tk.IntVar(self)
+        self.dxdy = tk.DoubleVar(self)
         
         # Disablize the resizability of the GUI.
         self.resizable(0, 0)        
@@ -125,31 +126,37 @@ class Application(tk.Tk):
     
         # Create Entry widgets to accept User Input
         self.sate_option = tk.OptionMenu(self, self.satenow, *SATE_OPTIONS, command=self.option_changed)
-        self.sate_option.place(relx=0.92, rely=0.1)
+        self.sate_option.place(relx=0.92, rely=0.05)
         self.sate_option.config(width=10)
         self.sate_label = tk.Label(self, foreground='red', text='Satellite: ')
-        self.sate_label.place(relx=leftbound, rely=0.1)
+        self.sate_label.place(relx=leftbound, rely=0.05)
         
-        self.lon_entry = tk.Entry(self, width = 15)
-        self.lon_entry.place(relx=0.92, rely=0.15)
+        self.lon_entry = tk.Entry(self, width = 12)
+        self.lon_entry.place(relx=0.92, rely=0.1)
         self.lon_label = tk.Label(self, foreground='red', text='Longitude: ')
-        self.lon_label.place(relx=leftbound, rely=0.15)
+        self.lon_label.place(relx=leftbound, rely=0.1)
         
-        self.lat_entry = tk.Entry(self, width = 15)
-        self.lat_entry.place(relx=0.92, rely=0.2)
+        self.lat_entry = tk.Entry(self, width = 12)
+        self.lat_entry.place(relx=0.92, rely=0.15)
         self.lat_label = tk.Label(self, foreground='red', text='Latitude: ')
-        self.lat_label.place(relx=leftbound, rely=0.2)
+        self.lat_label.place(relx=leftbound, rely=0.15)
         
-        self.yy_entry = tk.Entry(self, width = 15)
-        self.yy_entry.place(relx=0.92, rely=0.25)
+        self.yy_entry = tk.Entry(self, width = 12)
+        self.yy_entry.place(relx=0.92, rely=0.20)
         self.yy_label = tk.Label(self, foreground='red', text='Year: ')
-        self.yy_label.place(relx=leftbound, rely=0.25)
+        self.yy_label.place(relx=leftbound, rely=0.20)
         
-        self.mm_entry = tk.Entry(self, width = 15)
-        self.mm_entry.place(relx=0.92, rely=0.3)
+        self.mm_entry = tk.Entry(self, width = 12)
+        self.mm_entry.place(relx=0.92, rely=0.25)
         self.mm_label = tk.Label(self, foreground='red', text='Month: ')
-        self.mm_label.place(relx=leftbound, rely=0.3)
+        self.mm_label.place(relx=leftbound, rely=0.25)
         
+        self.dxdy_entry = tk.Entry(self, width = 12)
+        self.dxdy_entry.place(relx=0.92, rely=0.3)
+        self.dxdy_entry.insert(0, "1.5")
+        self.dxdy_label = tk.Label(self, foreground='red', text='dX/dY (km): ')
+        self.dxdy_label.place(relx=leftbound, rely=0.3)
+
         # Buttons
         self.search_button = tk.Button(self, text='Search', command=lambda:self.do_search())
         self.search_button.place(relx=leftbound, rely=0.35)
@@ -195,7 +202,7 @@ class Application(tk.Tk):
             yynow = int(self.yy_entry.get())
             mmnow = int(self.mm_entry.get())
 
-            if latnow > 85 or latnow < -85 or lonnow < 0 or lonnow > 360 or mmnow not in MONTHS or satenow not in satellite_database.keys():
+            if latnow > 85 or latnow < -85 or lonnow < -180 or lonnow > 360 or mmnow not in MONTHS or satenow not in satellite_database.keys():
                 print(satellite_database.keys())
                 self.post_print('Something wrong with the information entered: \n')
                 self.post_print('>  ==> Satellite: %s' % satenow)
@@ -219,6 +226,8 @@ class Application(tk.Tk):
             self.lonnow = float(self.lon_entry.get())
             self.yynow = int(self.yy_entry.get())
             self.mmnow = int(self.mm_entry.get())
+            self.dxdy = float(self.dxdy_entry.get())
+
             self.post_print('>  ~~~~~~~~~~~~~~~~~~~~~')
             self.post_print('> Current configuration: ')
             self.post_print('>  ==> Satellite: %s' % self.satenow.get())
@@ -226,6 +235,7 @@ class Application(tk.Tk):
             self.post_print('>  ==> Latitude : %.3f' % self.latnow)
             self.post_print('>  ==> Year:      %04d' % self.yynow)
             self.post_print('>  ==> Month:     %02d' % self.mmnow)
+            self.post_print('>  ==> dXdY (km): %.1f' % self.dxdy)
             self.post_print('>  ~~~~~~~~~~~~~~~~~~~~~')
             current_sate = self.satenow.get()
             center_lon, center_lat = self.lonnow, self.latnow
@@ -233,9 +243,9 @@ class Application(tk.Tk):
             end_time = start_time + timedelta(days=40)
             end_time = datetime(end_time.year, end_time.month, 1, 0, 0)
             self.post_print('> Searching for: ' + start_time.strftime('%Y-%m-%d --> ') + end_time.strftime('%Y-%m-%d'))
-            img_id_list, date_list, img_date_list, imgchannels, imgxch4, imglons, imglats, u10m, v10m = get_plume(self, self.lonnow, self.latnow, start_time.strftime('%Y-%m-%d'), end_time.strftime('%Y-%m-%d'), dX=1.5, dY=1.5, do_retrieval=False, satellite=current_sate)  # 5.905613686710645, 31.65857047520231  # 31.6585, 5.9053  # self.satenow.get()
+            img_id_list, date_list, img_date_list, imgchannels, imgxch4, imglons, imglats, u10m, v10m = get_plume(self, self.lonnow, self.latnow, start_time.strftime('%Y-%m-%d'), end_time.strftime('%Y-%m-%d'), dX=self.dxdy, dY=self.dxdy, do_retrieval=False, satellite=current_sate)  # 5.905613686710645, 31.65857047520231  # 31.6585, 5.9053  # self.satenow.get()
             img_idx = 0
-            print('u, v: ', u10m, v10m)
+
             # start_time = datetime(2020, 3, 1, 0, 0)
             # end_time = datetime(2020, 4, 1, 0, 0)
             # current_sate = 'Landsat 8'
@@ -258,8 +268,6 @@ def animate(i):
         ax2.clear()
         ax3.clear()
         ax4.clear()
-        # ax5.clear()
-        # ax6.clear()
         ax7.clear()
         
 
@@ -309,8 +317,11 @@ def animate(i):
         ax2.set_title('NDMI', y=1)
 
 
-        im = ax3.imshow(rgb, transform=ccrs.PlateCarree(), extent=[imglons[img_idx, 0, 0], imglats[img_idx, 0, 0], imglons[img_idx, -1, -1], imglats[img_idx, -1, -1]])
+        im = ax3.imshow(rgb)
+                #transform=ccrs.PlateCarree(), extent=[imglons[img_idx, 0, 0], imglats[img_idx, 0, 0], imglons[img_idx, -1, -1], imglats[img_idx, -1, -1]])
         ax3.set_title('RGB True Color')
+        ax3.set_xticks( [0, np.max(xx)-0.5])
+        ax3.set_yticks( [0, np.max(yy)-0.5])
         
         im = ax4.pcolormesh(xx, yy, imgchannels[img_idx, :, :, 7], cmap=cm.binary_r, vmin=0, vmax=80)
         ax4.set_xlim((-0.5, np.max(xx)))
