@@ -1,7 +1,7 @@
-###############################################################
+##############################################################################
 #                  Methane labeller GUI                            
-#             Author: Tai-Long He (taihe@uw.edu)              
-###############################################################
+#  Authors: Tai-Long He (taihe@uw.edu), Alex J Turner, Ryan J Boyd         
+##############################################################################
 from tkinter import END
 import tkinter as tk
 from backend.ee_retrieval import satellite_database, get_plume
