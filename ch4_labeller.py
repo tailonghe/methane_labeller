@@ -33,7 +33,7 @@ LARGE_FONT = ("Courier", 12)
 NORM_FONT = ("Courier", 10)
 SMALL_FONT = ("Courier", 0)
 MONTHS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
-SATE_OPTIONS = ['Landsat 8', 'Landsat 7', 'Landsat 5', 'Landsat 4', 'Sentinel-2']
+SATE_OPTIONS = ['Landsat 9', 'Landsat 8', 'Landsat 7', 'Landsat 5', 'Landsat 4', 'Sentinel-2']
 
 viridis = cm.get_cmap('viridis', 256)
 newcolors = viridis(np.linspace(0, 1, 256))
@@ -84,6 +84,7 @@ imgchannels, imgxch4, imglons, imglats, imgmask, u10m, v10m = None, None, None, 
 img_idx = 0
 global brightness_scaler
 brightness_scaler = {
+    'Landsat 9': 0.4,
     'Landsat 8': 0.4,
     'Landsat 7': 0.4,
     'Landsat 5': 0.4,

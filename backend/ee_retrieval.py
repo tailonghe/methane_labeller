@@ -5,8 +5,15 @@ import ee
 import numpy as np
 from sklearn.linear_model import HuberRegressor
 import os
-
+from scipy import interpolate
 from backend.radtran import retrieve
+
+# Dev log
+# Oct14: Landsat 9 added; 
+#        Region bounds change to target point; 
+#        Check cloud score with nans
+#        Interpolate strips of nans in SWIR1/2 channels
+
 
 
 # parameters for radtran
@@ -18,8 +25,19 @@ obsangle = 0
 method = 'MBSP'
 
 satellite_database = {
+    'Landsat 9': {
+      'Folder': 'LC09/C02/T1_TOA',
+      'Red': 'B4',
+      'Green': 'B3',
+      'Blue': 'B2',
+      'NIR': 'B5',
+      'SWIR1': 'B6',
+      'SWIR2': 'B7',
+      'Cloud': 'B11',
+      'Shortname': 'L9',
+    },
     'Landsat 8': {
-      'Folder': 'LC08',
+      'Folder': 'LC08/C02/T1_TOA',
       'Red': 'B4',
       'Green': 'B3',
       'Blue': 'B2',
@@ -30,7 +48,7 @@ satellite_database = {
       'Shortname': 'L8',
     },
     'Landsat 7': {
-      'Folder': 'LE07',
+      'Folder': 'LE07/C02/T1_TOA',
       'Red': 'B3',
       'Green': 'B2',
       'Blue': 'B1',
@@ -41,7 +59,7 @@ satellite_database = {
       'Shortname': 'L7',
     },
     'Landsat 5': {
-      'Folder': 'LT05',
+      'Folder': 'LT05/C02/T1_TOA',
       'Red': 'B3',
       'Green': 'B2',
       'Blue': 'B1',
@@ -167,6 +185,8 @@ def get_plume(tkframe, lon, lat, startDate, endDate, dX=1.5, dY=1.5, do_retrieva
               [lon+0.02, lat-0.02],\
               [lon+0.02, lat+0.02]])
 
+    
+
     redband = satellite_database[satellite]['Red']
     greenband = satellite_database[satellite]['Green']
     blueband = satellite_database[satellite]['Blue']
@@ -182,7 +202,7 @@ def get_plume(tkframe, lon, lat, startDate, endDate, dX=1.5, dY=1.5, do_retrieva
     if satellite == 'Sentinel-2':
         _default_value = None
         scaleFac = 0.0001
-        img_collection = get_s2_cld_col(region, startDate, endDate)
+        img_collection = get_s2_cld_col(re, startDate, endDate)  # Oct10 tlh: change to tiles covering the central point only
         if img_collection is not None:
             img_collection = img_collection.map(add_cloud_bands).select([redband,
                                             greenband,
@@ -194,7 +214,9 @@ def get_plume(tkframe, lon, lat, startDate, endDate, dX=1.5, dY=1.5, do_retrieva
     else:
         _default_value = -999
         scaleFac = 1
-        img_collection = ee.ImageCollection('LANDSAT/%s/C01/T1_RT_TOA'%foldername).filterDate(startDate, endDate).filterBounds(region).select([redband,
+
+        # Oct10 tlh: change to tiles covering the central point only
+        img_collection = ee.ImageCollection('LANDSAT/%s'%foldername).filterDate(startDate, endDate).filterBounds(re).select([redband,
                                                                         greenband,
                                                                         blueband,
                                                                         nirband,
@@ -283,6 +305,8 @@ def get_plume(tkframe, lon, lat, startDate, endDate, dX=1.5, dY=1.5, do_retrieva
             lons = np.squeeze(geemap.ee_to_numpy(lons, region=region))
             lats = np.squeeze(geemap.ee_to_numpy(lats, region=region))
 
+            print('lon/lat shape:', lons.shape, lats.shape)
+
             B6channel = currentimg.select(swir1band).multiply(scaleFac)
             B7channel = currentimg.select(swir2band).multiply(scaleFac)
             SWIR1img = B6channel.reproject(crs=ee.Projection('EPSG:3395'), scale=30)
@@ -339,24 +363,63 @@ def get_plume(tkframe, lon, lat, startDate, endDate, dX=1.5, dY=1.5, do_retrieva
 
             if satellite == 'Sentinel-2':
                 cloudscore = currentimg.select('cloud_prob').reproject(crs=ee.Projection('EPSG:3395'), scale=30)
-                cloudscore = np.squeeze(geemap.ee_to_numpy(cloudscore, region=region, default_value=_default_value))
+                cloudscore = np.squeeze(geemap.ee_to_numpy(cloudscore, region=region, default_value=None))
             else:
                 cloudscore = ee.Algorithms.Landsat.simpleCloudScore(currentimg).select(['cloud'])
-                cloudscore = cloudscore.reproject(crs=ee.Projection('EPSG:3395'), scale=30)
-                cloudscore = np.squeeze(geemap.ee_to_numpy(cloudscore, region=region, default_value=100))
+                cloudscore = cloudscore.reproject(crs=ee.Projection('EPSG:3395'), scale=30).float()
+                cloudscore = np.squeeze(geemap.ee_to_numpy(cloudscore, region=region, default_value=999)).astype(float)
+
+            print(cloudscore)
+            # Make sure the cloudscore isn't empty
+            if cloudscore.all() == None:
+                cloudscore    = np.empty(bchannel.shape)
+                cloudscore[:] = np.nan
 
             if np.any(rchannel == _default_value):
-                rchannel[rchannel == _default_value] = np.nan
+                rchannel[np.where(rchannel == _default_value)] = np.nan
             if np.any(gchannel == _default_value):
-                gchannel[gchannel == _default_value] = np.nan
+                gchannel[np.where(gchannel == _default_value)] = np.nan
             if np.any(bchannel == _default_value):
-                bchannel[bchannel == _default_value] = np.nan
+                bchannel[np.where(bchannel == _default_value)] = np.nan
             if np.any(nirchannel == _default_value):
-                nirchannel[nirchannel == _default_value] = np.nan
+                nirchannel[np.where(nirchannel == _default_value)] = np.nan
             if np.any(swir1channel == _default_value):
-                swir1channel[swir1channel == _default_value] = np.nan
+                swir1channel[np.where(swir1channel == _default_value)] = np.nan
             if np.any(swir2channel == _default_value):
-                swir2channel[swir2channel == _default_value] = np.nan
+                swir2channel[np.where(swir2channel == _default_value)] = np.nan
+            cloudscore[np.where(cloudscore > 100)] = np.nan
+
+            gridxy = np.transpose(np.array([np.reshape(lons,np.prod(lons.shape)),np.reshape(lats,np.prod(lats.shape))]))
+            # print('gridxy shape: ', gridxy.shape) (16770, 2)
+            cloudscore = cloudscore.flatten()
+            swir1channel = swir1channel.flatten()
+            swir2channel = swir2channel.flatten()
+            dR = dR.flatten()
+            # print('shape check L398: ', cloudscore.shape, swir1channel.shape, swir2channel.shape)
+            # print(type(cloudscore), cloudscore.shape)
+
+            # print('cloud nan check: ', np.any(np.isnan(cloudscore)), cloudscore.shape)
+            nonnangrid = gridxy[np.where(~np.isnan(cloudscore))]
+            cloudscore = cloudscore[np.where(~np.isnan(cloudscore))]
+            cloudscore = interpolate.griddata(nonnangrid, cloudscore, (lons, lats), method='linear')
+            # print('cloud nan check: ', np.any(np.isnan(cloudscore)), cloudscore.shape)
+
+            # print('SWIR1 nan check: ', np.any(np.isnan(swir1channel)))
+            nonnangrid = gridxy[np.where(~np.isnan(swir1channel))]
+            swir1channel = swir1channel[np.where(~np.isnan(swir1channel))]
+            swir1channel = interpolate.griddata(nonnangrid, swir1channel, (lons, lats), method='linear')
+
+            # print('SWIR2 nan check: ', np.any(np.isnan(swir2channel)))
+            nonnangrid = gridxy[np.where(~np.isnan(swir2channel))]
+            swir2channel = swir2channel[np.where(~np.isnan(swir2channel))]
+            swir2channel = interpolate.griddata(nonnangrid, swir2channel, (lons, lats), method='linear')
+
+            # print('dR nan check: ', np.any(np.isnan(dR)))
+            nonnangrid = gridxy[np.where(~np.isnan(dR))]
+            dR = dR[np.where(~np.isnan(dR))]
+            dR = interpolate.griddata(nonnangrid, dR, (lons, lats), method='linear')
+
+            # print('shape check L420: ', cloudscore.shape, swir1channel.shape, swir2channel.shape, dR.shape)
 
             chanls = np.stack([dR, rchannel, gchannel, bchannel, nirchannel, swir1channel, swir2channel, cloudscore], axis=-1)
             date_list2.append(imgdate)
